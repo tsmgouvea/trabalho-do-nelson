@@ -1,0 +1,263 @@
+from PyQt6 import  uic,QtWidgets
+import mysql.connector # opção 1 de conexão com o banco
+import pymysql # opção 2 de conexão com o banco - - CASO HAJA PROBLEMAS COM A OPÇÃO 1
+#instalar a biblioteca - pip install reportlab
+from reportlab.pdfgen import canvas
+
+numero_id = 0  #iniciliazação da variável global
+
+#opção 1
+#banco = mysql.connector.connect(
+
+# opção 2
+banco = pymysql.connect( 
+    host="localhost",
+    user="root",
+    passwd='Emdezembrode81.',
+    database="db_tecmenu"
+)
+#opção 1
+#if banco.is_connect():
+ #   print ("CONECTADO AO banco de dados com sucesso!")
+  
+  
+  # Verificando se está conectado opção 2
+try:
+    banco.ping(reconnect=True)  # Tenta reconectar se necessário
+    print("CONECTADO AO banco de dados com sucesso!")
+except pymysql.MySQLError:
+    print("Falha na conexão com o banco de dados.")
+
+ 
+def chama_primeira_tela():
+    usuario = login.lineEdit.text()
+    senha = login.lineEdit_2.text()
+
+    cursor = banco.cursor()
+    query = "SELECT cargo FROM usuario WHERE nome_usu = %s AND senha_usu = %s"
+    cursor.execute(query, (usuario, senha))
+    resultado = cursor.fetchone()
+
+    if resultado:
+        cargo = resultado[0].lower()
+
+        if cargo == "admin":
+            admin.show()
+        elif cargo == "funcionario":
+            listar_produtos_adm.show()
+        elif cargo == "estoquista":
+            admin.show()
+        elif cargo == "gerente":
+            admin.show()
+        else:
+            QtWidgets.QMessageBox.warning(login, "Aviso", f"Cargo '{cargo}' não reconhecido.")
+    else:
+        QtWidgets.QMessageBox.warning(login, "Erro de Login", "Usuário ou senha incorretos.")   
+
+def adicionar_usuario():
+    linha1 = admin.lineEdit.text()
+    linha2 = admin.lineEdit_2.text()
+    linha3 = admin.lineEdit_3.text()
+
+    cargo = ""
+    
+    if admin.radioButton.isChecked() :
+        cargo ="funcionario"
+        
+    elif admin.radioButton_2.isChecked() :
+        cargo ="estoquista"
+
+    elif admin.radioButton_3.isChecked() :
+        cargo ="gerente"
+
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Selecione um cargo.")
+        return
+
+    cursor = banco.cursor()
+    comando_SQL = "INSERT INTO usuario (nome_usu,cargo,tel_usu,senha_usu) VALUES (%s,%s,%s,%s)"
+    dados = (str(linha1),cargo,str(linha2),str(linha3))
+    cursor.execute(comando_SQL,dados)
+    banco.commit()
+    admin.lineEdit.setText("")
+    admin.lineEdit_2.setText("")
+    admin.lineEdit_3.setText("")
+
+def adicionar_produto():
+    linha4 = admin.lineEdit_4.text()
+    linha5 = admin.lineEdit_5.text()
+    linha6 = admin.lineEdit_6.text()
+    
+    nome_fabricante = linha6.strip().lower()
+
+    categoria = ""
+    
+    if admin.radioButton_4.isChecked() :
+        categoria ="tempero"
+        
+    elif admin.radioButton_5.isChecked() :
+        categoria ="proteina"
+
+    elif admin.radioButton_6.isChecked() :
+        categoria ="legume"
+
+    elif admin.radioButton_7.isChecked() :
+        categoria ="verdura"
+
+    elif admin.radioButton_8.isChecked() :
+        categoria ="grao"
+
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Selecione uma categoria.")
+        return
+
+    cursor = banco.cursor()
+
+    cursor.execute("SELECT id_cat FROM categoria WHERE nome_cat = %s", (categoria,))
+    resultado_categoria = cursor.fetchone()
+    if resultado_categoria:
+        id_categoria = resultado_categoria[0]
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Categoria não encontrada.")
+        return
+    
+    cursor.execute("SELECT id_fabricante FROM fabricante WHERE nome_fab = %s", (nome_fabricante,))
+    resultado_fabricante = cursor.fetchone()
+    if resultado_fabricante:
+        id_fabricante = resultado_fabricante[0]
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Fabricante não encontrado.")
+        return
+    
+
+    comando_SQL = "INSERT INTO produto (nome_prod,id_cat,qtd,id_fabricante) VALUES (%s,%s,%s,%s)"
+    dados = (str(linha4),id_categoria,int(linha5),id_fabricante)
+    cursor.execute(comando_SQL,dados)
+    banco.commit()
+    admin.lineEdit_4.setText("")
+    admin.lineEdit_5.setText("")
+    admin.lineEdit_6.setText("")
+
+
+def listar_produtos_admin():
+    listar_produtos_adm.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT p.id_produto, p.nome_prod, c.nome_cat, qtd, f.nome_fab FROM produto p JOIN categoria c ON p.id_cat = c.id_cat JOIN fabricante f ON p.id_fabricante = f.id_fabricante"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    listar_produtos_adm.tableWidget.setRowCount(len(dados_lidos))
+    listar_produtos_adm.tableWidget.setColumnCount(5)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 5):
+           listar_produtos_adm.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j])))   
+
+def listar_usuarios_admin():
+    listar_usuarios_adm.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT * FROM usuario"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    listar_usuarios_adm.tableWidget.setRowCount(len(dados_lidos))
+    listar_usuarios_adm.tableWidget.setColumnCount(5)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 5):
+           listar_usuarios_adm.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+def excluir_usuario():
+    linha = listar_usuarios_adm.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        return
+    listar_usuarios_adm.tableWidget.removeRow(linha)
+
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_usuario FROM usuario")
+    dados_lidos = cursor.fetchall()
+    valor_id = dados_lidos[linha][0]
+    cursor.execute("DELETE FROM usuario WHERE id_usuario="+ str(valor_id))
+    banco.commit()
+
+def excluir_produto():
+    linha = listar_produtos_adm.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        return
+    listar_produtos_adm.tableWidget.removeRow(linha)
+
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_produto FROM produto")
+    dados_lidos = cursor.fetchall()
+    valor_id = dados_lidos[linha][0]
+    cursor.execute("DELETE FROM produto WHERE id_produto="+ str(valor_id))
+    banco.commit()
+
+def editar_usuario():
+    global numero_id
+
+    linha = listar_usuarios_adm.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        return
+    
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_usuario FROM usuario")
+    dados_lidos = cursor.fetchall()
+    valor_id = dados_lidos[linha][0]
+    cursor.execute("SELECT * FROM usuario WHERE id_usuario="+ str(valor_id))
+    usuario = cursor.fetchall()
+    
+    tela_editar_usuario.show()
+
+    tela_editar_usuario.lineEdit.setText(str(usuario[0][0]))
+    tela_editar_usuario.lineEdit_2.setText(str(usuario[0][1]))
+    tela_editar_usuario.lineEdit_3.setText(str(usuario[0][2]))
+    tela_editar_usuario.lineEdit_4.setText(str(usuario[0][3]))
+    tela_editar_usuario.lineEdit_5.setText(str(usuario[0][4]))
+    numero_id = valor_id
+
+
+def salvar_valor_editado():
+     #Possibilita atribuir o numero do ID
+    global numero_id
+
+    # ler dados do lineEdit
+    nome = tela_editar_usuario.lineEdit_2.text()
+    cargo = tela_editar_usuario.lineEdit_3.text()
+    telefone = tela_editar_usuario.lineEdit_4.text()
+    senha = tela_editar_usuario.lineEdit_5.text()
+    
+    # atualizar os dados no banco mas não vai atualizar a tela)
+    cursor = banco.cursor()
+    cursor.execute("UPDATE usuario SET nome_usu = '{}', cargo = '{}', tel_usu = '{}', senha_usu ='{}' WHERE id_usuario = {}".format(nome,cargo,telefone,senha,numero_id))
+    banco.commit()
+    
+    #atualizar as janelas - vai mostrar as mudanças
+    tela_editar_usuario.close()
+    listar_usuarios_adm.close()
+    listar_usuarios_admin()
+
+app=QtWidgets.QApplication([])
+login=uic.loadUi("login.ui")
+admin=uic.loadUi("tela_admin.ui")
+listar_usuarios_adm=uic.loadUi("listar_usuarios_adm.ui")
+listar_produtos_adm=uic.loadUi("listar_produtos_adm.ui")
+tela_editar_usuario=uic.loadUi("editar_usuario.ui")
+login.pushButton.clicked.connect(chama_primeira_tela)
+admin.pushButton.clicked.connect(adicionar_usuario)
+admin.pushButton_2.clicked.connect(listar_usuarios_admin)
+admin.pushButton_3.clicked.connect(adicionar_produto)
+admin.pushButton_4.clicked.connect(listar_produtos_admin)
+listar_usuarios_adm.pushButton.clicked.connect(excluir_usuario)
+listar_usuarios_adm.pushButton_2.clicked.connect(editar_usuario)
+listar_produtos_adm.pushButton.clicked.connect(excluir_produto)
+tela_editar_usuario.pushButton.clicked.connect(salvar_valor_editado)
+
+
+login.show()
+app.exec()

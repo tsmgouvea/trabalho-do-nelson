@@ -13,8 +13,8 @@ numero_id = 0  #iniciliazação da variável global
 banco = pymysql.connect( 
     host="localhost",
     user="root",
-    passwd='senha123',
-    database="cadastro_produtos"
+    passwd='Emdezembrode81.',
+    database="db_tecmenu"
 )
 #opção 1
 #if banco.is_connect():
@@ -165,13 +165,16 @@ def chama_segunda_tela():
         for j in range(0, 5):
            segunda_tela.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
    
-     
+def chama_primeira_tela():
+    formulario.show()    
         
 
 app=QtWidgets.QApplication([])
-formulario=uic.loadUi("versão final/formulario.ui")
-segunda_tela=uic.loadUi("versão final/listar_dados.ui")
-tela_editar=uic.loadUi("versão final/menu_editar.ui")
+login=uic.loadUi("login.ui")
+formulario=uic.loadUi("formulario.ui")
+segunda_tela=uic.loadUi("listar_dados.ui")
+tela_editar=uic.loadUi("menu_editar.ui")
+login.pushButton.clicked.connect(chama_primeira_tela)
 formulario.pushButton.clicked.connect(funcao_principal)
 formulario.pushButton_2.clicked.connect(chama_segunda_tela)
 segunda_tela.pushButton.clicked.connect(gerar_pdf)
@@ -179,5 +182,5 @@ segunda_tela.pushButton_2.clicked.connect(excluir_dados)
 segunda_tela.pushButton_3.clicked.connect(editar_dados)
 tela_editar.pushButton.clicked.connect(salvar_valor_editado)
 
-formulario.show()
+login.show()
 app.exec()
