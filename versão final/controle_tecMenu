@@ -5,6 +5,7 @@ import pymysql # opção 2 de conexão com o banco - - CASO HAJA PROBLEMAS COM A
 from reportlab.pdfgen import canvas
 
 numero_id = 0  #iniciliazação da variável global
+id_usuario = 0
 
 #opção 1
 #banco = mysql.connector.connect(
@@ -30,25 +31,27 @@ except pymysql.MySQLError:
 
  
 def chama_primeira_tela():
+    global id_usuario
     usuario = login.lineEdit.text()
     senha = login.lineEdit_2.text()
 
     cursor = banco.cursor()
-    query = "SELECT cargo FROM usuario WHERE nome_usu = %s AND senha_usu = %s"
+    query = "SELECT id_usuario, cargo FROM usuario WHERE nome_usu = %s AND senha_usu = %s"
     cursor.execute(query, (usuario, senha))
     resultado = cursor.fetchone()
 
     if resultado:
-        cargo = resultado[0].lower()
+        id_usuario = resultado[0]
+        cargo = resultado[1].lower()
 
         if cargo == "admin":
             admin.show()
         elif cargo == "funcionario":
-            listar_produtos_adm.show()
+            funcionario.show()
         elif cargo == "estoquista":
-            admin.show()
+            estoquista.show()
         elif cargo == "gerente":
-            admin.show()
+            gerente.show()
         else:
             QtWidgets.QMessageBox.warning(login, "Aviso", f"Cargo '{cargo}' não reconhecido.")
     else:
@@ -84,31 +87,36 @@ def adicionar_usuario():
     admin.lineEdit_3.setText("")
 
 def adicionar_produto():
-    linha4 = admin.lineEdit_4.text()
-    linha5 = admin.lineEdit_5.text()
-    linha6 = admin.lineEdit_6.text()
+    if admin.isVisible():
+        tela=admin
+    elif estoquista.isVisible():
+        tela=estoquista
+    else:
+        tela=gerente
+    linha4 = tela.lineEdit_4.text()
+    linha5 = tela.lineEdit_5.text()
     
-    nome_fabricante = linha6.strip().lower()
+    nome_fabricante = linha5.strip().lower()
 
     categoria = ""
     
-    if admin.radioButton_4.isChecked() :
+    if tela.radioButton_4.isChecked() :
         categoria ="tempero"
         
-    elif admin.radioButton_5.isChecked() :
+    elif tela.radioButton_5.isChecked() :
         categoria ="proteina"
 
-    elif admin.radioButton_6.isChecked() :
+    elif tela.radioButton_6.isChecked() :
         categoria ="legume"
 
-    elif admin.radioButton_7.isChecked() :
+    elif tela.radioButton_7.isChecked() :
         categoria ="verdura"
 
-    elif admin.radioButton_8.isChecked() :
+    elif tela.radioButton_8.isChecked() :
         categoria ="grao"
 
     else:
-        QtWidgets.QMessageBox.warning(admin, "Erro", "Selecione uma categoria.")
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Selecione uma categoria.")
         return
 
     cursor = banco.cursor()
@@ -118,7 +126,7 @@ def adicionar_produto():
     if resultado_categoria:
         id_categoria = resultado_categoria[0]
     else:
-        QtWidgets.QMessageBox.warning(admin, "Erro", "Categoria não encontrada.")
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Categoria não encontrada.")
         return
     
     cursor.execute("SELECT id_fabricante FROM fabricante WHERE nome_fab = %s", (nome_fabricante,))
@@ -126,53 +134,112 @@ def adicionar_produto():
     if resultado_fabricante:
         id_fabricante = resultado_fabricante[0]
     else:
-        QtWidgets.QMessageBox.warning(admin, "Erro", "Fabricante não encontrado.")
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Fabricante não encontrado.")
         return
     
 
     comando_SQL = "INSERT INTO produto (nome_prod,id_cat,qtd,id_fabricante) VALUES (%s,%s,%s,%s)"
-    dados = (str(linha4),id_categoria,int(linha5),id_fabricante)
+    dados = (str(linha4),id_categoria,0,id_fabricante)
     cursor.execute(comando_SQL,dados)
+    global id_usuario
+    id_produto_inserido = cursor.lastrowid
+    comando_SQL = "INSERT INTO cadastro (id_produto,id_usuario) VALUES (%s,%s)"
+    dados = (id_produto_inserido, id_usuario)
+    cursor.execute(comando_SQL, dados)
     banco.commit()
-    admin.lineEdit_4.setText("")
-    admin.lineEdit_5.setText("")
-    admin.lineEdit_6.setText("")
+    tela.lineEdit_4.setText("")
+    tela.lineEdit_5.setText("")
 
-
-def listar_produtos_admin():
-    listar_produtos_adm.show()
+def adicionar_fabricante():
+    linha7 = admin.lineEdit_7.text()
+    linha8 = admin.lineEdit_8.text()
+    linha9 = admin.lineEdit_9.text()
 
     cursor = banco.cursor()
-    comando_SQL = "SELECT p.id_produto, p.nome_prod, c.nome_cat, qtd, f.nome_fab FROM produto p JOIN categoria c ON p.id_cat = c.id_cat JOIN fabricante f ON p.id_fabricante = f.id_fabricante"
+    comando_SQL = "INSERT INTO fabricante (nome_fab,tel_fab,cnpj) VALUES (%s,%s,%s)"
+    dados = (str(linha7),str(linha8),str(linha9))
+    cursor.execute(comando_SQL,dados)
+    banco.commit()
+    admin.lineEdit_7.setText("")
+    admin.lineEdit_8.setText("")
+    admin.lineEdit_9.setText("")
+
+def listar_produtos():
+    if admin.isVisible():
+        tela=listar_produtos_adm
+    elif estoquista.isVisible():
+        tela=listar_produtos_est
+    elif funcionario.isVisible():
+        tela=listar_produtos_fun
+    else:
+        tela=listar_produtos_ger
+    tela.show()
+
+    cursor = banco.cursor()
+    comando_SQL = """
+        SELECT p.id_produto, p.nome_prod, c.nome_cat,
+               IFNULL(SUM(co.quantidade), 0) AS qtd_total,
+               f.nome_fab
+        FROM produto p
+        JOIN categoria c ON p.id_cat = c.id_cat
+        JOIN fabricante f ON p.id_fabricante = f.id_fabricante
+        LEFT JOIN compra co ON p.id_produto = co.id_produto
+        GROUP BY p.id_produto, p.nome_prod, c.nome_cat, f.nome_fab
+        ORDER BY p.id_produto"""
     cursor.execute(comando_SQL)
     dados_lidos = cursor.fetchall()
 
-    listar_produtos_adm.tableWidget.setRowCount(len(dados_lidos))
-    listar_produtos_adm.tableWidget.setColumnCount(5)
+    tela.tableWidget.setRowCount(len(dados_lidos))
+    tela.tableWidget.setColumnCount(5)
 
     for i in range(0, len(dados_lidos)):
         for j in range(0, 5):
-           listar_produtos_adm.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j])))   
+           tela.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
 
-def listar_usuarios_admin():
-    listar_usuarios_adm.show()
+    tela.tableWidget.resizeColumnsToContents()
+
+def listar_fabricantes_admin():
+    listar_fabricantes_adm.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT * FROM fabricante"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    listar_fabricantes_adm.tableWidget.setRowCount(len(dados_lidos))
+    listar_fabricantes_adm.tableWidget.setColumnCount(4)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 4):
+           listar_fabricantes_adm.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+    listar_fabricantes_adm.tableWidget.resizeColumnsToContents()
+
+def listar_usuarios():
+    if admin.isVisible():
+        tela=listar_usuarios_adm
+    else:
+        tela=listar_usuarios_ger
+    tela.show()
 
     cursor = banco.cursor()
     comando_SQL = "SELECT * FROM usuario"
     cursor.execute(comando_SQL)
     dados_lidos = cursor.fetchall()
 
-    listar_usuarios_adm.tableWidget.setRowCount(len(dados_lidos))
-    listar_usuarios_adm.tableWidget.setColumnCount(5)
+    tela.tableWidget.setRowCount(len(dados_lidos))
+    tela.tableWidget.setColumnCount(5)
 
     for i in range(0, len(dados_lidos)):
         for j in range(0, 5):
-           listar_usuarios_adm.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+           tela.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+    tela.tableWidget.resizeColumnsToContents()
 
 def excluir_usuario():
     linha = listar_usuarios_adm.tableWidget.currentRow()
     if linha == -1:
-        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um usuario para excluir.")
         return
     listar_usuarios_adm.tableWidget.removeRow(linha)
 
@@ -184,25 +251,59 @@ def excluir_usuario():
     banco.commit()
 
 def excluir_produto():
-    linha = listar_produtos_adm.tableWidget.currentRow()
+    if listar_produtos_adm.isVisible():
+        tela=listar_produtos_adm
+    elif listar_produtos_est.isVisible():
+        tela=listar_produtos_est
+    else:
+        tela=listar_produtos_ger
+
+    linha = tela.tableWidget.currentRow()
     if linha == -1:
-        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Selecione um produto para excluir.")
         return
-    listar_produtos_adm.tableWidget.removeRow(linha)
+
+    item_id = tela.tableWidget.item(linha, 0)
+    if item_id is None:
+        QtWidgets.QMessageBox.warning(tela, "Erro", "ID do produto não encontrado na tabela.")
+        return
+
+    id_produto = item_id.text()
 
     cursor = banco.cursor()
-    cursor.execute("SELECT id_produto FROM produto")
+    try:
+        cursor.execute("DELETE FROM produto WHERE id_produto = %s", (id_produto,))
+        banco.commit()
+        tela.tableWidget.removeRow(linha)
+    except Exception as e:
+        QtWidgets.QMessageBox.critical(tela, "Erro", f"Erro ao excluir: {e}")
+
+
+def excluir_fabricante():
+    linha = listar_fabricantes_adm.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(listar_fabricantes_adm, "Erro", "Selecione um fabricante para excluir.")
+        return
+    listar_fabricantes_adm.tableWidget.removeRow(linha)
+
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_fabricante FROM fabricante")
     dados_lidos = cursor.fetchall()
     valor_id = dados_lidos[linha][0]
-    cursor.execute("DELETE FROM produto WHERE id_produto="+ str(valor_id))
+    cursor.execute("DELETE FROM fabricante WHERE id_fabricante="+ str(valor_id))
     banco.commit()
 
 def editar_usuario():
     global numero_id
 
-    linha = listar_usuarios_adm.tableWidget.currentRow()
+    if listar_usuarios_adm.isVisible():
+        tela=listar_usuarios_adm
+    else:
+        tela=listar_usuarios_ger
+
+    linha = tela.tableWidget.currentRow()
     if linha == -1:
-        QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para excluir.")
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Selecione um usuario para editar.")
         return
     
     cursor = banco.cursor()
@@ -222,7 +323,7 @@ def editar_usuario():
     numero_id = valor_id
 
 
-def salvar_valor_editado():
+def salvar_usuario_editado():
      #Possibilita atribuir o numero do ID
     global numero_id
 
@@ -237,26 +338,410 @@ def salvar_valor_editado():
     cursor.execute("UPDATE usuario SET nome_usu = '{}', cargo = '{}', tel_usu = '{}', senha_usu ='{}' WHERE id_usuario = {}".format(nome,cargo,telefone,senha,numero_id))
     banco.commit()
     
+    if listar_usuarios_adm.isVisible():
+        tela=listar_usuarios_adm
+    else:
+        tela=listar_usuarios_ger
     #atualizar as janelas - vai mostrar as mudanças
     tela_editar_usuario.close()
-    listar_usuarios_adm.close()
-    listar_usuarios_admin()
+    tela.close()
+    listar_usuarios()
+
+def editar_fabricante():
+    global numero_id
+
+    linha = listar_fabricantes_adm.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(listar_fabricantes_adm, "Erro", "Selecione um fabricante para editar.")
+        return
+    
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_fabricante FROM fabricante")
+    dados_lidos = cursor.fetchall()
+    valor_id = dados_lidos[linha][0]
+    cursor.execute("SELECT * FROM fabricante WHERE id_fabricante="+ str(valor_id))
+    usuario = cursor.fetchall()
+    
+    tela_editar_fabricante.show()
+
+    tela_editar_fabricante.lineEdit.setText(str(usuario[0][0]))
+    tela_editar_fabricante.lineEdit_2.setText(str(usuario[0][1]))
+    tela_editar_fabricante.lineEdit_3.setText(str(usuario[0][2]))
+    tela_editar_fabricante.lineEdit_4.setText(str(usuario[0][3]))
+    numero_id = valor_id
+
+def salvar_fabricante_editado():
+     #Possibilita atribuir o numero do ID
+    global numero_id
+
+    # ler dados do lineEdit
+    nome = tela_editar_fabricante.lineEdit_2.text()
+    telefone = tela_editar_fabricante.lineEdit_3.text()
+    cnpj = tela_editar_fabricante.lineEdit_4.text()
+    
+    # atualizar os dados no banco mas não vai atualizar a tela)
+    cursor = banco.cursor()
+    cursor.execute("UPDATE fabricante SET nome_fab = '{}', tel_fab = '{}', cnpj ='{}' WHERE id_fabricante = {}".format(nome,telefone,cnpj,numero_id))
+    banco.commit()
+    
+    #atualizar as janelas - vai mostrar as mudanças
+    tela_editar_fabricante.close()
+    listar_fabricantes_adm.close()
+    listar_fabricantes_admin()
+
+def editar_produto():
+    global numero_id
+
+    if listar_produtos_adm.isVisible():
+        tela=listar_produtos_adm
+    elif listar_produtos_est.isVisible():
+        tela=listar_produtos_est
+    else:
+        tela=listar_produtos_ger
+
+    linha = tela.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Selecione um produto para editar.")
+        return
+    
+    valor_id = tela.tableWidget.item(linha, 0).text()
+
+    cursor = banco.cursor()
+    cursor.execute("SELECT p.id_produto, p.nome_prod, c.nome_cat, qtd, f.nome_fab FROM produto p JOIN categoria c ON p.id_cat = c.id_cat JOIN fabricante f ON p.id_fabricante = f.id_fabricante WHERE id_produto= %s", (valor_id))
+    produto = cursor.fetchall()
+    
+    tela_editar_produto.show()
+
+    tela_editar_produto.lineEdit.setText(str(produto[0][0]))
+    tela_editar_produto.lineEdit_2.setText(str(produto[0][1]))
+    tela_editar_produto.lineEdit_3.setText(str(produto[0][2]))
+    tela_editar_produto.lineEdit_4.setText(str(produto[0][3]))
+    tela_editar_produto.lineEdit_5.setText(str(produto[0][4]))
+    numero_id = valor_id
+
+
+def salvar_produto_editado():
+     #Possibilita atribuir o numero do ID
+    global numero_id
+
+    # ler dados do lineEdit
+    nome = tela_editar_produto.lineEdit_2.text()
+    categoria = tela_editar_produto.lineEdit_3.text().strip().lower()
+    quantidade = tela_editar_produto.lineEdit_4.text()
+    fabricante = tela_editar_produto.lineEdit_5.text().strip().lower()
+
+    cursor = banco.cursor()
+    cursor.execute("SELECT id_cat FROM categoria WHERE nome_cat = %s", (categoria,))
+    resultado_categoria = cursor.fetchone()
+    if resultado_categoria:
+        id_categoria = resultado_categoria[0]
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Categoria não encontrada.")
+        return
+    
+    cursor.execute("SELECT id_fabricante FROM fabricante WHERE nome_fab = %s", (fabricante,))
+    resultado_fabricante = cursor.fetchone()
+    if resultado_fabricante:
+        id_fabricante = resultado_fabricante[0]
+    else:
+        QtWidgets.QMessageBox.warning(admin, "Erro", "Fabricante não encontrado.")
+        return
+    
+    # atualizar os dados no banco mas não vai atualizar a tela)
+    cursor.execute("UPDATE produto SET nome_prod = '{}', id_cat = '{}', qtd = '{}', id_fabricante ='{}' WHERE id_produto = {}".format(nome,id_categoria,quantidade,id_fabricante,numero_id))
+    banco.commit()
+
+    if listar_produtos_adm.isVisible():
+        tela=listar_produtos_adm
+    elif listar_produtos_est.isVisible():
+        tela=listar_produtos_est
+    else:
+        tela=listar_produtos_ger
+    
+    #atualizar as janelas - vai mostrar as mudanças
+    tela_editar_produto.close()
+    tela.close()
+    listar_produtos()
+
+def solicitar_produto():
+    global id_usuario
+
+    if listar_produtos_adm.isVisible():
+        tela=listar_produtos_adm
+    else:
+        tela=listar_produtos_est
+
+    linha = tela.tableWidget.currentRow()
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Selecione um produto para solicitar.")
+        return
+    
+    id_produto = tela.tableWidget.item(linha, 0).text()
+
+    cursor = banco.cursor()
+    comando_SQL="INSERT INTO solicita (id_produto, id_usuario) VALUES (%s, %s)"
+    dados = (id_produto, id_usuario)
+    cursor.execute(comando_SQL,dados)
+    banco.commit()
+
+def chama_tela_solicitacoes():
+    listar_solicitacoes.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT s.id_solicitacao, p.nome_prod, u.nome_usu, DATE(s.soli_dt), TIME(s.soli_dt) FROM solicita s JOIN produto p ON s.id_produto = p.id_produto JOIN usuario u ON s.id_usuario = u.id_usuario"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    listar_solicitacoes.tableWidget.setRowCount(len(dados_lidos))
+    listar_solicitacoes.tableWidget.setColumnCount(5)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 5):
+           listar_solicitacoes.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+    listar_solicitacoes.tableWidget.resizeColumnsToContents()
+
+produtos_escolhidos = []
+
+def chama_gerar_prato():
+    tela_gerar_prato.show()
+    tela_gerar_prato.listWidget.clear()
+    atualizar_tabela_pratos()
+
+def adicionar_ingrediente():
+    produto = tela_gerar_prato.lineEdit.text().strip().lower()
+    if produto and produto not in produtos_escolhidos:
+        produtos_escolhidos.append(produto)
+        tela_gerar_prato.listWidget.addItem(produto)
+        atualizar_tabela_pratos()
+    tela_gerar_prato.lineEdit.clear()
+
+def atualizar_tabela_pratos():
+    cursor = banco.cursor()
+    if not produtos_escolhidos:
+        # Mostrar todos os pratos
+        query = "SELECT id_prato, nome_prato, descricao FROM prato"
+        cursor.execute(query)
+    else:
+        placeholders = ','.join(['%s'] * len(produtos_escolhidos))
+
+        query = f"""
+            SELECT p.id_prato, p.nome_prato, p.descricao
+            FROM prato p
+            JOIN prato_produto pp ON p.id_prato = pp.id_prato
+            JOIN produto pr ON pr.id_produto = pp.id_produto
+            WHERE LOWER(pr.nome_prod) IN ({placeholders})
+            GROUP BY p.id_prato
+            HAVING COUNT(DISTINCT pr.id_produto) = %s
+        """
+
+        cursor.execute(query, produtos_escolhidos + [len(produtos_escolhidos)])
+    pratos = cursor.fetchall()
+
+    tela_gerar_prato.tableWidget.setRowCount(len(pratos))
+    tela_gerar_prato.tableWidget.setColumnCount(3)
+
+    for i, prato in enumerate(pratos):
+        for j, valor in enumerate(prato):
+            item = QtWidgets.QTableWidgetItem(str(valor))
+            tela_gerar_prato.tableWidget.setItem(i, j, item)
+
+    tela_gerar_prato.tableWidget.resizeColumnsToContents()
+
+def gerar_prato():
+    linha = tela_gerar_prato.tableWidget.currentRow()
+
+    if linha == -1:
+        QtWidgets.QMessageBox.warning(tela_gerar_prato, "Erro", "Selecione um prato para gerar.")
+        return
+
+    # Obter os dados do prato selecionado
+    id_prato = tela_gerar_prato.tableWidget.item(linha, 0).text()
+    nome_prato = tela_gerar_prato.tableWidget.item(linha, 1).text()
+    descricao = tela_gerar_prato.tableWidget.item(linha, 2).text()
+
+    cursor = banco.cursor()
+
+    # Inserir o prato no menu
+    comando_SQL = "INSERT INTO menu (nome_prato, descricao) VALUES (%s, %s)"
+    cursor.execute(comando_SQL, (nome_prato, descricao))
+
+    # Excluir o prato da tabela prato (isso vai remover também da tabela prato_produto se tiver ON DELETE CASCADE)
+    comando_SQL = "DELETE FROM prato WHERE id_prato = %s"
+    cursor.execute(comando_SQL, (id_prato,))
+
+    banco.commit()
+
+    # Atualizar a tabela da interface
+    tela_gerar_prato.tableWidget.removeRow(linha)
+
+def ver_menu():
+    tela_ver_menu.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT * FROM menu"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    tela_ver_menu.tableWidget.setRowCount(len(dados_lidos))
+    tela_ver_menu.tableWidget.setColumnCount(3)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 3):
+           tela_ver_menu.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+    tela_ver_menu.tableWidget.resizeColumnsToContents()
+
+def comprar_produto():
+    if listar_produtos_adm.isVisible():
+        linha = listar_produtos_adm.tableWidget.currentRow()
+        if linha == -1:
+            QtWidgets.QMessageBox.warning(listar_produtos_adm, "Erro", "Selecione um produto para comprar.")
+            return
+
+        # Obter ID do produto selecionado
+        id_produto = listar_produtos_adm.tableWidget.item(linha, 0).text()
+        tela = listar_produtos_adm
+        atualizar_interface = listar_produtos
+    elif listar_produtos_ger.isVisible():
+        linha = listar_produtos_ger.tableWidget.currentRow()
+        if linha == -1:
+            QtWidgets.QMessageBox.warning(listar_produtos_ger, "Erro", "Selecione um produto para comprar.")
+            return
+
+        # Obter ID do produto selecionado
+        id_produto = listar_produtos_ger.tableWidget.item(linha, 0).text()
+        tela = listar_produtos_ger
+        atualizar_interface = listar_produtos
+    else:
+        linha = listar_solicitacoes.tableWidget.currentRow()
+        if linha == -1:
+            QtWidgets.QMessageBox.warning(listar_solicitacoes, "Erro", "Selecione um produto para comprar.")
+            return
+
+        # Obter ID do produto selecionado
+        nome_produto = listar_solicitacoes.tableWidget.item(linha, 1).text()
+        tela = listar_solicitacoes
+        atualizar_interface = chama_tela_solicitacoes
+
+        cursor = banco.cursor()
+        cursor.execute("SELECT id_produto FROM produto WHERE nome_prod = %s", (nome_produto,))
+        resultado = cursor.fetchone()
+        if resultado:
+            id_produto = resultado[0]
+        else:
+            QtWidgets.QMessageBox.warning(tela, "Erro", "Produto não encontrado no banco.")
+            return
+
+    # Abrir janela ou input para digitar quantidade a comprar
+    qtd, ok = QtWidgets.QInputDialog.getInt(tela, "Compra de Produto", "Quantidade a comprar:", min=1)
+    if not ok:
+        return
+
+    cursor = banco.cursor()
+
+    # Buscar quantidade atual
+    cursor.execute("SELECT qtd FROM produto WHERE id_produto = %s", (id_produto,))
+    resultado = cursor.fetchone()
+
+    if resultado:
+
+        # Atualizar a quantidade no banco
+        cursor.execute("INSERT INTO compra (id_produto, quantidade) VALUES (%s, %s)", (id_produto, qtd))
+        cursor.execute("SELECT IFNULL(SUM(quantidade), 0) FROM compra WHERE id_produto = %s",(id_produto,))
+        nova_qtd = cursor.fetchone()[0]
+        cursor.execute("UPDATE produto SET qtd = %s WHERE id_produto = %s", (nova_qtd, id_produto))
+        cursor.execute("DELETE FROM solicita WHERE id_produto = %s", (id_produto,))
+        banco.commit()
+
+        # Atualiza a tabela na interface se desejar
+        tela.close()
+        atualizar_interface()
+    else:
+        QtWidgets.QMessageBox.warning(tela, "Erro", "Produto não encontrado.")
+
+def chama_historico_compras():
+    tela_historico_compras.show()
+
+    cursor = banco.cursor()
+    comando_SQL = "SELECT c.id_compra, p.nome_prod, c.quantidade, DATE(c.data_compra), TIME(c.data_compra) FROM compra c JOIN produto p ON c.id_produto = p.id_produto ORDER BY c.id_compra"
+    cursor.execute(comando_SQL)
+    dados_lidos = cursor.fetchall()
+
+    tela_historico_compras.tableWidget.setRowCount(len(dados_lidos))
+    tela_historico_compras.tableWidget.setColumnCount(5)
+
+    for i in range(0, len(dados_lidos)):
+        for j in range(0, 5):
+           tela_historico_compras.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(dados_lidos[i][j]))) 
+
+    tela_historico_compras.tableWidget.resizeColumnsToContents()
 
 app=QtWidgets.QApplication([])
 login=uic.loadUi("login.ui")
 admin=uic.loadUi("tela_admin.ui")
+gerente=uic.loadUi("tela_gerente.ui")
+estoquista=uic.loadUi("tela_estoquista.ui")
+funcionario=uic.loadUi("tela_funcionario.ui")
 listar_usuarios_adm=uic.loadUi("listar_usuarios_adm.ui")
+listar_usuarios_ger=uic.loadUi("listar_usuarios_gerente.ui")
 listar_produtos_adm=uic.loadUi("listar_produtos_adm.ui")
+listar_produtos_ger=uic.loadUi("listar_produtos_gerente.ui")
+listar_produtos_est=uic.loadUi("listar_produtos_estoquista.ui")
+listar_produtos_fun=uic.loadUi("listar_produtos_funcionario.ui")
+listar_fabricantes_adm=uic.loadUi("listar_fabricantes_adm.ui")
+listar_solicitacoes=uic.loadUi("listar_solicitacoes.ui")
 tela_editar_usuario=uic.loadUi("editar_usuario.ui")
+tela_editar_produto=uic.loadUi("editar_produto.ui")
+tela_editar_fabricante=uic.loadUi("editar_fabricante.ui")
+tela_gerar_prato=uic.loadUi("gerar_prato.ui")
+tela_ver_menu=uic.loadUi("ver_menu.ui")
+tela_historico_compras=uic.loadUi("historico_compras.ui")
 login.pushButton.clicked.connect(chama_primeira_tela)
 admin.pushButton.clicked.connect(adicionar_usuario)
-admin.pushButton_2.clicked.connect(listar_usuarios_admin)
+admin.pushButton_2.clicked.connect(listar_usuarios)
 admin.pushButton_3.clicked.connect(adicionar_produto)
-admin.pushButton_4.clicked.connect(listar_produtos_admin)
+admin.pushButton_4.clicked.connect(listar_produtos)
+admin.pushButton_5.clicked.connect(adicionar_fabricante)
+admin.pushButton_6.clicked.connect(ver_menu)
+admin.pushButton_7.clicked.connect(chama_gerar_prato)
+admin.pushButton_8.clicked.connect(chama_tela_solicitacoes)
+admin.pushButton_9.clicked.connect(listar_fabricantes_admin)
+admin.pushButton_10.clicked.connect(chama_historico_compras)
 listar_usuarios_adm.pushButton.clicked.connect(excluir_usuario)
 listar_usuarios_adm.pushButton_2.clicked.connect(editar_usuario)
 listar_produtos_adm.pushButton.clicked.connect(excluir_produto)
-tela_editar_usuario.pushButton.clicked.connect(salvar_valor_editado)
+listar_produtos_adm.pushButton_2.clicked.connect(editar_produto)
+listar_produtos_adm.pushButton_3.clicked.connect(solicitar_produto)
+listar_produtos_adm.pushButton_4.clicked.connect(comprar_produto)
+listar_fabricantes_adm.pushButton.clicked.connect(excluir_fabricante)
+listar_fabricantes_adm.pushButton_2.clicked.connect(editar_fabricante)
+listar_solicitacoes.pushButton.clicked.connect(comprar_produto)
+tela_editar_usuario.pushButton.clicked.connect(salvar_usuario_editado)
+tela_editar_produto.pushButton.clicked.connect(salvar_produto_editado)
+tela_editar_fabricante.pushButton.clicked.connect(salvar_fabricante_editado)
+tela_gerar_prato.pushButton.clicked.connect(adicionar_ingrediente)
+tela_gerar_prato.pushButton_2.clicked.connect(gerar_prato)
+gerente.pushButton_2.clicked.connect(listar_usuarios)
+gerente.pushButton_3.clicked.connect(adicionar_produto)
+gerente.pushButton_4.clicked.connect(listar_produtos)
+gerente.pushButton_6.clicked.connect(ver_menu)
+gerente.pushButton_7.clicked.connect(chama_gerar_prato)
+gerente.pushButton_8.clicked.connect(chama_tela_solicitacoes)
+listar_usuarios_ger.pushButton.clicked.connect(editar_usuario)
+listar_produtos_ger.pushButton.clicked.connect(excluir_produto)
+listar_produtos_ger.pushButton_2.clicked.connect(editar_produto)
+listar_produtos_ger.pushButton_3.clicked.connect(comprar_produto)
+estoquista.pushButton_3.clicked.connect(adicionar_produto)
+estoquista.pushButton_4.clicked.connect(listar_produtos)
+estoquista.pushButton_6.clicked.connect(ver_menu)
+estoquista.pushButton_7.clicked.connect(chama_gerar_prato)
+listar_produtos_est.pushButton.clicked.connect(excluir_produto)
+listar_produtos_est.pushButton_2.clicked.connect(editar_produto)
+listar_produtos_est.pushButton_3.clicked.connect(solicitar_produto)
+funcionario.pushButton_4.clicked.connect(listar_produtos)
+funcionario.pushButton_6.clicked.connect(ver_menu)
+funcionario.pushButton_7.clicked.connect(chama_gerar_prato)
 
 
 login.show()

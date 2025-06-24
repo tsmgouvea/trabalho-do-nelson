@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>383</width>
-    <height>643</height>
+    <width>408</width>
+    <height>626</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <rect>
      <x>0</x>
      <y>80</y>
-     <width>521</width>
+     <width>411</width>
      <height>491</height>
     </rect>
    </property>
@@ -34,37 +34,19 @@
    </column>
    <column>
     <property name="text">
-     <string>CATEGORIA</string>
+     <string>TELEFONE</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>QUANTIDADE</string>
+     <string>CNPJ</string>
     </property>
    </column>
-   <column>
-    <property name="text">
-     <string>FABRICANTE</string>
-    </property>
-   </column>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>130</x>
-     <y>30</y>
-     <width>91</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Lista de Produtos</string>
-   </property>
   </widget>
   <widget class="QPushButton" name="pushButton">
    <property name="geometry">
     <rect>
-     <x>30</x>
+     <x>130</x>
      <y>590</y>
      <width>75</width>
      <height>23</height>
@@ -77,7 +59,7 @@
   <widget class="QPushButton" name="pushButton_2">
    <property name="geometry">
     <rect>
-     <x>140</x>
+     <x>220</x>
      <y>590</y>
      <width>75</width>
      <height>23</height>
@@ -87,17 +69,17 @@
     <string>Editar</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_3">
+  <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>250</x>
-     <y>590</y>
-     <width>75</width>
-     <height>23</height>
+     <x>150</x>
+     <y>40</y>
+     <width>91</width>
+     <height>16</height>
     </rect>
    </property>
    <property name="text">
-    <string>Comprar</string>
+    <string>Lista de Produtos</string>
    </property>
   </widget>
  </widget>
