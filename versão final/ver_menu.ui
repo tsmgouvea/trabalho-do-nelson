@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>407</width>
-    <height>408</height>
+    <height>469</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -50,6 +50,19 @@
      <string>DESCRIÇÃO</string>
     </property>
    </column>
+  </widget>
+  <widget class="QPushButton" name="pushButton">
+   <property name="geometry">
+    <rect>
+     <x>160</x>
+     <y>430</y>
+     <width>75</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Gerar PDF</string>
+   </property>
   </widget>
  </widget>
  <resources/>
