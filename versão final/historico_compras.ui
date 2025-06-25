@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>519</width>
-    <height>643</height>
+    <width>505</width>
+    <height>300</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,8 +18,8 @@
     <rect>
      <x>0</x>
      <y>80</y>
-     <width>521</width>
-     <height>491</height>
+     <width>511</width>
+     <height>192</height>
     </rect>
    </property>
    <column>
@@ -29,50 +29,24 @@
    </column>
    <column>
     <property name="text">
-     <string>NOME</string>
+     <string>PRODUTO</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>CARGO</string>
+     <string>QUANTIDADE</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>TELEFONE</string>
+     <string>DATA</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>SENHA</string>
+     <string>HORA</string>
     </property>
    </column>
-  </widget>
-  <widget class="QPushButton" name="pushButton">
-   <property name="geometry">
-    <rect>
-     <x>210</x>
-     <y>590</y>
-     <width>75</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Editar</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>210</x>
-     <y>40</y>
-     <width>81</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Lista de Usuários</string>
-   </property>
   </widget>
  </widget>
  <resources/>

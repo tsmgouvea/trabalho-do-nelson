@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>383</width>
-    <height>643</height>
+    <width>508</width>
+    <height>579</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,9 +17,9 @@
    <property name="geometry">
     <rect>
      <x>0</x>
-     <y>80</y>
-     <width>521</width>
-     <height>491</height>
+     <y>70</y>
+     <width>511</width>
+     <height>451</height>
     </rect>
    </property>
    <column>
@@ -29,69 +29,43 @@
    </column>
    <column>
     <property name="text">
-     <string>NOME</string>
+     <string>PRODUTO</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>CATEGORIA</string>
+     <string>USUARIO</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>QUANTIDADE</string>
+     <string>DATA</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>FABRICANTE</string>
+     <string>HORA</string>
     </property>
    </column>
   </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>130</x>
+     <x>230</x>
      <y>30</y>
      <width>91</width>
      <height>16</height>
     </rect>
    </property>
    <property name="text">
-    <string>Lista de Produtos</string>
+    <string>Solicitações</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButton">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>590</y>
-     <width>75</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Excluir</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pushButton_2">
-   <property name="geometry">
-    <rect>
-     <x>140</x>
-     <y>590</y>
-     <width>75</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Editar</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pushButton_3">
-   <property name="geometry">
-    <rect>
-     <x>250</x>
-     <y>590</y>
+     <x>220</x>
+     <y>540</y>
      <width>75</width>
      <height>23</height>
     </rect>
